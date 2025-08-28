@@ -699,7 +699,7 @@ async function extractPageData(page) {
 // API: POST /analyze
 // ------------------------------------------------------------------
 app.post("/analyze", async (req, res) => {
-  const { url, id, token } = req.body;
+  const { url, id, token,webhook } = req.body;
 
   if (!url || !url.startsWith("http")) {
     return res.status(400).json({ error: "Please provide a valid 'url'" });
@@ -716,16 +716,30 @@ app.post("/analyze", async (req, res) => {
 
     const data = await extractPageData(page);
     await page.close();
-
-    return res.json({
-      id: id || null, // ✅ include client’s page_id
+// send results to requestbin
+const payload = {
+      id: id || null,
       url,
       above_the_fold: [
         { element_name: "main page title/header", text: data?.header?.text || "", dom_path: data?.header?.dom || "" },
         { element_name: "strap-line", text: data?.strapline?.text || "", dom_path: data?.strapline?.dom || "" },
         { element_name: "primary CTA button", text: data?.cta?.text || "", dom_path: data?.cta?.dom || "" }
-      ],
-    });
+      ]
+    };
+
+    // ✅ send data to client’s webhook
+ // ✅ Send to webhook only if provided and valid
+if (typeof webhook === "string" && webhook.startsWith("http")) {
+  await fetch(webhook, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+    // ✅ also return response to API caller
+    return res.json(payload);
+
   } catch (err) {
     console.error("❌ Error analyzing page:", err);
     return res.status(500).json({ error: err.message });
