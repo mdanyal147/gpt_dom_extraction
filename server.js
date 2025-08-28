@@ -708,14 +708,29 @@ app.post("/analyze", async (req, res) => {
     return res.status(403).json({ error: "Invalid or missing token" });
   }
 
-  let browser;
-  try {
-    browser = await launchBrowser({ headless: true });
+  const puppeteer = require("puppeteer");  // make sure this is at the top
+
+let browser;
+try {
+    browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        executablePath: puppeteer.executablePath() // ensures Chrome is found on Render
+    });
+
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
     const data = await extractPageData(page);
     await page.close();
+
+    // your payload / webhook logic here
+} catch (err) {
+    console.error("❌ Error analyzing page:", err);
+    return res.status(500).json({ error: err.message });
+} finally {
+    if (browser) await browser.close();
+}
 
     return res.json({
       id: id || null, // ✅ include client’s page_id
