@@ -709,8 +709,13 @@ app.post("/analyze", async (req, res) => {
   }
 
   let browser;
-  try {
-    browser = await launchBrowser({ headless: true });
+try {
+    browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        executablePath: puppeteer.executablePath() // ensures Chrome is found on Render
+    });
+
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
